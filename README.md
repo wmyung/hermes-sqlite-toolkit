@@ -161,13 +161,15 @@ sqlite_query(database="memory", query="SELECT uri FROM memories WHERE category='
 
 **Philosophy:** This toolkit is intentionally **narrow**. It does three things that Hermes currently cannot do at all, and does them with zero dependencies. It does not try to be a vector database, a memory system, or a skill manager — those already exist. It fills the structured-data gap.
 
-The three tools are designed to be **complementary**:
+The three tools are designed to be **complementary** with [Hermes Memory Enhancer](https://github.com/wmyung/hermes-memory-enhancer) and [skillctl](https://github.com/wmyung/skillctl):
 
 | Stack | Problem | Solution |
 |---|---|---|
-| Memory Enhancer | "What did the user tell me last week?" | Semantic search |
-| skillctl | "Which skills take too much context?" | Install/archive |
+| [Memory Enhancer](https://github.com/wmyung/hermes-memory-enhancer) | "What did the user tell me last week?" | Semantic search across shared DB |
+| [skillctl](https://github.com/wmyung/skillctl) | "Which skills take too much context?" | Install/archive in seconds |
 | **SQLite Toolkit** | "Did I already fetch this? Where's that file? Why did we decide X?" | **Structured queries** |
+
+All three are zero-dependency Python tools that complement each other. The `sqlite_query` tool can query all three databases from one endpoint.
 
 ---
 
