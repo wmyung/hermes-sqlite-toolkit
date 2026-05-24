@@ -1,6 +1,31 @@
-# Hermes SQLite Toolkit 🗄️⚡
+# Hermes SQLite Suite 🗄️⚡
 
-**Agent-managed SQLite storage for Hermes Agent — tool result cache, artifact registry, and decision log. Zero dependencies. One database. Three tables. Keywords: sqlite-toolkit, hermes-sqlite, hermes-memory, agent-tooling, token-saver, structured-storage.**
+**Zero-dependency Hermes Agent tool family — structured storage, semantic memory, skill management. One SQLite engine, four tools, one `suite-install.sh`.**
+
+> This repo is the **hub** for four sibling projects that share the same philosophy: SQLite-backed, zero-dependency, agent-managed. Install what you need. Skip what you don't.
+
+### Suite Overview
+
+| Tool | What it does | Install |
+|---|---|---|
+| **SQLite Toolkit** ← (this) | Tool cache, artifact registry, decision log | `curl .../sqlite-suitectl` |
+| [Memory Enhancer](https://github.com/wmyung/hermes-memory-enhancer) | Cross-session semantic memory, search, browse | `bash <(curl .../install.sh)` |
+| [skillctl](https://github.com/wmyung/skillctl) | Skill context manager — trim `available_skills` | `curl .../skillctl` |
+| [Codex CLI Memory Enhancer](https://github.com/wmyung/codex-cli-memory-enhancer) | Same engine for OpenAI Codex CLI | `git clone` |
+
+All four are **zero-dependency Python, pure SQLite, no server, no API key, no vector DB.**
+
+### One-shot install (all four)
+
+```bash
+curl -sL https://raw.githubusercontent.com/wmyung/hermes-sqlite-toolkit/main/suite-install.sh | bash
+```
+
+---
+
+## Core: SQLite Toolkit
+
+**Agent-managed SQLite storage for Hermes Agent — tool result cache, artifact registry, and decision log. One database. Three tables.**
 
 Every Hermes session wastes tokens on repeated tool calls, loses track of generated files ("where was that plot?"), and forgets why decisions were made. This toolkit gives the agent three persistent SQLite tables it can read and write directly — no server, no API key, no config.
 
@@ -161,28 +186,6 @@ sqlite_query(database="memory", query="SELECT uri FROM memories WHERE category='
 
 _* Memory Enhancer's `install.sh` uses PyYAML; the plugin itself is zero-dependency._
 
-### Install the full suite
-
-```bash
-# 1. Memory Enhancer — cross-session semantic memory
-curl -sL https://raw.githubusercontent.com/wmyung/hermes-memory-enhancer/main/install.sh | bash
-
-# 2. skillctl — skill context manager
-curl -sL https://raw.githubusercontent.com/wmyung/skillctl/main/skillctl -o ~/.hermes/bin/skillctl
-chmod +x ~/.hermes/bin/skillctl && ~/.hermes/bin/skillctl init
-
-# 3. SQLite Toolkit — tool cache, artifacts, decisions (this)
-curl -sL https://raw.githubusercontent.com/wmyung/hermes-sqlite-toolkit/main/sqlite-suitectl -o ~/.hermes/bin/sqlite-suitectl
-chmod +x ~/.hermes/bin/sqlite-suitectl && ~/.hermes/bin/sqlite-suitectl init
-cp ~/.hermes/sqlite-toolkit/tools/sqlite_tool.py ~/.hermes/tools/sqlite_tool.py
-```
-
-Or one-shot:
-
-```bash
-curl -sL https://raw.githubusercontent.com/wmyung/hermes-sqlite-toolkit/main/suite-install.sh | bash
-```
-
 ### Positioning vs other projects
 
 | Project | When to choose |
@@ -219,7 +222,15 @@ See [AGENTS.md](AGENTS.md) for how to use this toolkit during sessions.
 
 ---
 
-## Install
+## Install (SQLite Toolkit only)
+
+Already have the suite? Run just this:
+
+```bash
+curl -sL https://raw.githubusercontent.com/wmyung/hermes-sqlite-toolkit/main/install.sh | bash
+```
+
+Or manual:
 
 ```bash
 # 1. Download CLI
