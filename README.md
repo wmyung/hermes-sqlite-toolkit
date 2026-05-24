@@ -155,9 +155,11 @@ sqlite_query(database="memory", query="SELECT uri FROM memories WHERE category='
 | Skill usage tracking | ❌ | **✅** via skillctl + Curator | ❌ | ✅ Usage JSON | ❌ |
 | Session search | ❌ | **✅** via SessionDB (built-in) | ✅ Hybrid | ❌ | ✅ FTS5 |
 | Agent-queryable | ✅ Direct SQL | ✅ | ✅ 17 tools | ❌ | ❌ |
-| Dependencies | **Zero** | Zero / 1 dep | sqlite-vec | Full Hermes | Full Hermes |
+| Dependencies | **Zero** | **Zero*** | sqlite-vec | Full Hermes | Full Hermes |
 
 **SQLite Toolkit alone** handles structured data only (cache, artifacts, decisions). **+ Sibling suite** adds semantic search (Memory Enhancer), skill tracking (skillctl + Curator), and session search (built-in SessionDB).
+
+_* Memory Enhancer's `install.sh` uses PyYAML; the plugin itself is zero-dependency._
 
 ### Install the full suite
 
