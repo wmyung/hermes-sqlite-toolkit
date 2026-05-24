@@ -165,6 +165,7 @@ The three tools are designed to be **complementary** with [Hermes Memory Enhance
 
 | Stack | Problem | Solution |
 |---|---|---|
+| [codex-cli-memory-enhancer](https://github.com/wmyung/codex-cli-memory-enhancer) | Codex CLI has no memory | Per-project SQLite with importance scoring |
 | [Memory Enhancer](https://github.com/wmyung/hermes-memory-enhancer) | "What did the user tell me last week?" | Semantic search across shared DB |
 | [skillctl](https://github.com/wmyung/skillctl) | "Which skills take too much context?" | Install/archive in seconds |
 | **SQLite Toolkit** | "Did I already fetch this? Where's that file? Why did we decide X?" | **Structured queries** |
