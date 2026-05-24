@@ -192,7 +192,17 @@ curl -sL https://raw.githubusercontent.com/wmyung/hermes-sqlite-toolkit/main/sui
 | **Hermes Curator** | You want passive auto-cleanup of unused skills (complementary to skillctl) |
 | **SessionDB** | Built into Hermes — always available for session search, no install needed |
 
-**Philosophy:** This toolkit is intentionally **narrow**. It does three things that Hermes currently cannot do at all, and does them with zero dependencies. It does not try to be a vector database, a memory system, or a skill manager — those already exist. It fills the structured-data gap.
+## Philosophy: Opt-in, Silent, Subservient
+
+This toolkit gives the agent storage — but **only you decide when it speaks**.
+
+**Three rules that never break:**
+
+1. **Silent by default** — Cache hits, artifact registrations, decision logs all happen in the database without a single word. The agent never says "I cached that" or "I logged it." You asked for silence? You get silence.
+2. **Never ask permission** — No "Should I save this?" No "Would you like me to remember that?" If you want it saved, say it. If you don't, the agent stays quiet.
+3. **Answers on demand only** — The agent checks cache before tool calls, looks up past decisions, searches for files — but never volunteers this information unless you ask: "Where's that plot?" "Why did we choose LDSC?" "What was I working on?"
+
+**Some people don't want an agent that stores anything automatically.** That's fair. This toolkit is not for you — and that's okay. It's designed for users who trust their agent to log silently and stay out of the way until called upon. If you prefer explicit confirmations or no auto-storage at all, skip this toolkit. Hermes works perfectly without it.
 
 ---
 
