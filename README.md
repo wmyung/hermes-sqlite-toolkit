@@ -145,34 +145,52 @@ sqlite_query(database="memory", query="SELECT uri FROM memories WHERE category='
 
 ## Comparison
 
-SQLite Toolkit is intentionally narrow — but paired with its sibling projects, it covers the full spectrum:
+| Feature | SQLite Toolkit alone | + Sibling suite | Mnemosyne | Hermes Curator | SessionDB |
+|---|---|---|---|---|---|
+| Tool result cache | ✅ TTL-based | ✅ | ❌ | ❌ | ❌ |
+| File artifact registry | ✅ Hash+tags+search | ✅ | ❌ | ❌ | ❌ |
+| Decision log | ✅ Topic+rationale | ✅ | ✅ Temporal triples | ❌ | ❌ |
+| Semantic/vector search | ❌ | **✅** via Memory Enhancer | ✅ sqlite-vec | ❌ | ❌ |
+| Memory extraction | ❌ | **✅** via Memory Enhancer | ✅ Memoria engine | ❌ | ❌ |
+| Skill usage tracking | ❌ | **✅** via skillctl + Curator | ❌ | ✅ Usage JSON | ❌ |
+| Session search | ❌ | **✅** via SessionDB (built-in) | ✅ Hybrid | ❌ | ✅ FTS5 |
+| Agent-queryable | ✅ Direct SQL | ✅ | ✅ 17 tools | ❌ | ❌ |
+| Dependencies | **Zero** | Zero / 1 dep | sqlite-vec | Full Hermes | Full Hermes |
 
-| Feature | SQLite Toolkit alone | + Memory Enhancer | + skillctl | + SessionDB (built-in) |
-|---|---|---|---|---|
-| Tool result cache | ✅ TTL-based | ✅ | ✅ | ❌ |
-| File artifact registry | ✅ Hash+tags+search | ✅ | ✅ | ❌ |
-| Decision log | ✅ Topic+rationale | ✅ | ✅ | ❌ |
-| Semantic/vector search | ❌ (intentional) | **✅** via `memory_enhancer_search` | ❌ | ❌ |
-| Memory extraction | ❌ | **✅** auto-extract on session end | ❌ | ❌ |
-| Skill usage tracking | ❌ | ❌ | **✅** `skillctl status` + Curator | ❌ |
-| Session search | ❌ | ❌ | ❌ | **✅** FTS5 |
-| Agent-queryable | ✅ Direct SQL | ✅ | ✅ | ❌ (internal) |
-| Dependencies | **Zero** | 1 dep (PyYAML) | **Zero** | Full Hermes |
+**SQLite Toolkit alone** handles structured data only (cache, artifacts, decisions). **+ Sibling suite** adds semantic search (Memory Enhancer), skill tracking (skillctl + Curator), and session search (built-in SessionDB).
 
-**The ❌ marks above mean "this tool alone doesn't do it" — not "Hermes can't do it."** Each sibling fills a different gap:
+### Install the full suite
+
+```bash
+# 1. Memory Enhancer — cross-session semantic memory
+curl -sL https://raw.githubusercontent.com/wmyung/hermes-memory-enhancer/main/install.sh | bash
+
+# 2. skillctl — skill context manager
+curl -sL https://raw.githubusercontent.com/wmyung/skillctl/main/skillctl -o ~/.hermes/bin/skillctl
+chmod +x ~/.hermes/bin/skillctl && ~/.hermes/bin/skillctl init
+
+# 3. SQLite Toolkit — tool cache, artifacts, decisions (this)
+curl -sL https://raw.githubusercontent.com/wmyung/hermes-sqlite-toolkit/main/sqlite-suitectl -o ~/.hermes/bin/sqlite-suitectl
+chmod +x ~/.hermes/bin/sqlite-suitectl && ~/.hermes/bin/sqlite-suitectl init
+cp ~/.hermes/sqlite-toolkit/tools/sqlite_tool.py ~/.hermes/tools/sqlite_tool.py
+```
+
+Or one-shot:
+
+```bash
+curl -sL https://raw.githubusercontent.com/wmyung/hermes-sqlite-toolkit/main/suite-install.sh | bash
+```
+
+### Positioning vs other projects
+
+| Project | When to choose |
+|---|---|
+| **SQLite Toolkit + siblings** | You want structured data + semantic memory + skill management — all zero-dependency |
+| **Mnemosyne** | You need a full memory system with vector search, graph traversal, and temporal triples |
+| **Hermes Curator** | You want passive auto-cleanup of unused skills (complementary to skillctl) |
+| **SessionDB** | Built into Hermes — always available for session search, no install needed |
 
 **Philosophy:** This toolkit is intentionally **narrow**. It does three things that Hermes currently cannot do at all, and does them with zero dependencies. It does not try to be a vector database, a memory system, or a skill manager — those already exist. It fills the structured-data gap.
-
-The three tools are designed to be **complementary** with [Hermes Memory Enhancer](https://github.com/wmyung/hermes-memory-enhancer) and [skillctl](https://github.com/wmyung/skillctl):
-
-| Stack | Problem | Solution |
-|---|---|---|
-| [codex-cli-memory-enhancer](https://github.com/wmyung/codex-cli-memory-enhancer) | Codex CLI has no memory | Per-project SQLite with importance scoring |
-| [Memory Enhancer](https://github.com/wmyung/hermes-memory-enhancer) | "What did the user tell me last week?" | Semantic search across shared DB |
-| [skillctl](https://github.com/wmyung/skillctl) | "Which skills take too much context?" | Install/archive in seconds |
-| **SQLite Toolkit** | "Did I already fetch this? Where's that file? Why did we decide X?" | **Structured queries** |
-
-All three are zero-dependency Python tools that complement each other. The `sqlite_query` tool can query all three databases from one endpoint.
 
 ---
 
