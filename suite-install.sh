@@ -11,10 +11,11 @@ echo "════════════════════════�
 
 echo ""
 echo "Step 1/4: hermes-memory-enhancer..."
-if [[ -d "${HOME}/.hermes/plugins/memory-enhancer" ]]; then
+if [[ -d "${HOME}/.hermes/plugins/memory-enhancer" ]] || command -v memory_enhancer_search &>/dev/null; then
     echo "  ✅ Already installed"
 else
-    bash <(curl -sL https://raw.githubusercontent.com/wmyung/hermes-memory-enhancer/main/install.sh)
+    echo "  ⚠️  Memory Enhancer requires a separate server (see docs). Skipping auto-install."
+    echo "     git clone https://github.com/wmyung/hermes-memory-enhancer.git"
 fi
 
 echo ""
