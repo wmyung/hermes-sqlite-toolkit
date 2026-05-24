@@ -1,6 +1,6 @@
 # Hermes SQLite Toolkit 🗄️⚡
 
-**Agent-managed SQLite storage for Hermes — tool result cache, artifact registry, and decision log. Zero dependencies. One database. Three tables.**
+**Agent-managed SQLite storage for Hermes Agent — tool result cache, artifact registry, and decision log. Zero dependencies. One database. Three tables. Keywords: sqlite-toolkit, hermes-sqlite, hermes-memory, agent-tooling, token-saver, structured-storage.**
 
 Every Hermes session wastes tokens on repeated tool calls, loses track of generated files ("where was that plot?"), and forgets why decisions were made. This toolkit gives the agent three persistent SQLite tables it can read and write directly — no server, no API key, no config.
 
@@ -205,4 +205,4 @@ cp tools/sqlite_tool.py ~/.hermes/tools/sqlite_tool.py
 
 ## Keywords
 
-`hermes-agent` `sqlite` `tool-cache` `artifact-registry` `decision-log` `agent-memory` `structured-storage` `prompt-efficiency` `token-saver` `zero-dependency`
+`hermes-agent` `sqlite` `tool-cache` `artifact-registry` `decision-log` `agent-memory` `structured-storage` `prompt-efficiency` `token-saver` `zero-dependency` `sqlite-toolkit` `hermes-plugin` `agent-tooling` `llm-context` `hermes-sqlite` `hermes-memory` `sqlite-query`
