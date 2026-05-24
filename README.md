@@ -145,19 +145,21 @@ sqlite_query(database="memory", query="SELECT uri FROM memories WHERE category='
 
 ## Comparison
 
-| Feature | Hermes SQLite Toolkit | Mnemosyne | Hermes Curator | SessionDB (internal) |
+SQLite Toolkit is intentionally narrow — but paired with its sibling projects, it covers the full spectrum:
+
+| Feature | SQLite Toolkit alone | + Memory Enhancer | + skillctl | + SessionDB (built-in) |
 |---|---|---|---|---|
-| Tool result cache | ✅ TTL-based | ❌ | ❌ | ❌ |
-| File artifact registry | ✅ Hash+tags+search | ❌ | ❌ | ❌ |
-| Decision log | ✅ Topic+rationale | ✅ Temporal triples | ❌ | ❌ |
-| Semantic/vector search | ❌ (intentional) | ✅ sqlite-vec | ❌ | ❌ |
-| Memory extraction | ❌ | ✅ Memoria engine | ❌ | ❌ |
-| Skill usage tracking | ❌ | ❌ | ✅ Usage JSON | ❌ |
-| Session search | ❌ | ✅ Hybrid | ❌ | ✅ FTS5 |
-| Agent-queryable | ✅ Direct SQL | ✅ 17 tools | ❌ | ❌ |
-| Dependencies | **Zero** | sqlite-vec | Full Hermes | Full Hermes |
-| Scope | Structured data only | Full memory system | Skill lifecycle | Session history |
-| Hermes integration | Tool + standalone CLI | Plugin (17 tools) | Built-in | Internal |
+| Tool result cache | ✅ TTL-based | ✅ | ✅ | ❌ |
+| File artifact registry | ✅ Hash+tags+search | ✅ | ✅ | ❌ |
+| Decision log | ✅ Topic+rationale | ✅ | ✅ | ❌ |
+| Semantic/vector search | ❌ (intentional) | **✅** via `memory_enhancer_search` | ❌ | ❌ |
+| Memory extraction | ❌ | **✅** auto-extract on session end | ❌ | ❌ |
+| Skill usage tracking | ❌ | ❌ | **✅** `skillctl status` + Curator | ❌ |
+| Session search | ❌ | ❌ | ❌ | **✅** FTS5 |
+| Agent-queryable | ✅ Direct SQL | ✅ | ✅ | ❌ (internal) |
+| Dependencies | **Zero** | 1 dep (PyYAML) | **Zero** | Full Hermes |
+
+**The ❌ marks above mean "this tool alone doesn't do it" — not "Hermes can't do it."** Each sibling fills a different gap:
 
 **Philosophy:** This toolkit is intentionally **narrow**. It does three things that Hermes currently cannot do at all, and does them with zero dependencies. It does not try to be a vector database, a memory system, or a skill manager — those already exist. It fills the structured-data gap.
 
