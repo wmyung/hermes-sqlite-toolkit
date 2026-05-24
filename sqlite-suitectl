@@ -1,0 +1,309 @@
+#!/usr/bin/env python3
+"""sqlite-suitectl — Hermes SQLite Toolkit CLI"""
+import sqlite3, sys, os, json, time, hashlib
+from pathlib import Path
+from datetime import datetime, timezone
+
+HOME = Path.home()
+HERMES = HOME / ".hermes"
+DEFAULT_DB = HERMES / "agent.db"
+SKILL_REGISTRY = HERMES / "skill_registry.db"
+MEMORY_DB = HERMES / "shared_memory" / "memory.sqlite3"
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS tool_cache (
+    query_hash TEXT PRIMARY KEY,
+    tool_name TEXT NOT NULL,
+    args_json TEXT NOT NULL,
+    result TEXT NOT NULL,
+    ttl INTEGER NOT NULL DEFAULT 3600,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE TABLE IF NOT EXISTS artifacts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    path TEXT NOT NULL UNIQUE,
+    description TEXT DEFAULT '',
+    file_hash TEXT DEFAULT '',
+    source TEXT DEFAULT '',
+    tags TEXT DEFAULT '',
+    session_id TEXT DEFAULT '',
+    file_size INTEGER DEFAULT 0,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    accessed_at INTEGER DEFAULT (unixepoch())
+);
+CREATE TABLE IF NOT EXISTS decisions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic TEXT NOT NULL,
+    decision TEXT NOT NULL,
+    rationale TEXT DEFAULT '',
+    alternatives TEXT DEFAULT '',
+    session_id TEXT DEFAULT '',
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX IF NOT EXISTS idx_cache_tool ON tool_cache(tool_name);
+CREATE INDEX IF NOT EXISTS idx_cache_ttl ON tool_cache(created_at);
+CREATE INDEX IF NOT EXISTS idx_artifact_tags ON artifacts(tags);
+CREATE INDEX IF NOT EXISTS idx_artifact_source ON artifacts(source);
+CREATE INDEX IF NOT EXISTS idx_decision_topic ON decisions(topic);
+CREATE INDEX IF NOT EXISTS idx_decision_time ON decisions(created_at);
+"""
+
+def db_path(name):
+    paths = {
+        "agent": DEFAULT_DB,
+        "skill": SKILL_REGISTRY,
+        "memory": MEMORY_DB,
+    }
+    return paths.get(name) or DEFAULT_DB
+
+def conn(dbname="agent"):
+    p = db_path(dbname)
+    c = sqlite3.connect(p)
+    c.row_factory = sqlite3.Row
+    return c
+
+def init():
+    DEFAULT_DB.parent.mkdir(parents=True, exist_ok=True)
+    c = conn()
+    c.executescript(SCHEMA)
+    c.commit()
+    # enable WAL
+    c.execute("PRAGMA journal_mode=WAL")
+    c.close()
+    print(f"✅ agent.db initialized at {DEFAULT_DB}")
+
+def status():
+    c = conn()
+    tables = ["tool_cache", "artifacts", "decisions"]
+    for t in tables:
+        try:
+            row = c.execute(f"SELECT COUNT(*) as cnt FROM {t}").fetchone()
+            print(f"  📊 {t}: {row['cnt']} rows")
+        except:
+            print(f"  📊 {t}: (table not found)")
+    # DB file size
+    if DEFAULT_DB.exists():
+        size = DEFAULT_DB.stat().st_size
+        if size < 1024:
+            print(f"  💾 DB size: {size} B")
+        elif size < 1024*1024:
+            print(f"  💾 DB size: {size/1024:.1f} KB")
+        else:
+            print(f"  💾 DB size: {size/(1024*1024):.1f} MB")
+    c.close()
+
+def cache_stats():
+    c = conn()
+    total = c.execute("SELECT COUNT(*) FROM tool_cache").fetchone()[0]
+    now = int(time.time())
+    expired = c.execute("SELECT COUNT(*) FROM tool_cache WHERE created_at + ttl < ?", (now,)).fetchone()[0]
+    active = total - expired
+    # top tools
+    tools = c.execute(
+        "SELECT tool_name, COUNT(*) as cnt FROM tool_cache GROUP BY tool_name ORDER BY cnt DESC LIMIT 5"
+    ).fetchall()
+    print(f"  📦 Total: {total}")
+    print(f"  ✅ Active: {active}")
+    print(f"  ⌛ Expired: {expired}")
+    if tools:
+        print(f"  🔝 Top tools:")
+        for t in tools:
+            print(f"     {t['tool_name']}: {t['cnt']}")
+    c.close()
+
+def cache_clear(stale_only=False):
+    c = conn()
+    if stale_only:
+        now = int(time.time())
+        deleted = c.execute("DELETE FROM tool_cache WHERE created_at + ttl < ?", (now,)).rowcount
+    else:
+        deleted = c.execute("DELETE FROM tool_cache").rowcount
+    c.commit()
+    c.close()
+    print(f"  🗑️ Deleted {deleted} cache entries")
+
+def search(query, dbname="agent"):
+    c = conn(dbname)
+    # Try FTS5 first, fall back to LIKE
+    try:
+        rows = c.execute(
+            "SELECT path, description, tags, source, created_at FROM artifacts WHERE path LIKE ? OR description LIKE ? OR tags LIKE ? ORDER BY created_at DESC LIMIT 30",
+            (f"%{query}%", f"%{query}%", f"%{query}%")
+        ).fetchall()
+    except:
+        rows = []
+    c.close()
+    if not rows:
+        print(f"  ❌ No matches for '{query}'")
+        return
+    for r in rows:
+        print(f"  📄 {r['path']}")
+        if r['description']:
+            print(f"     {r['description'][:100]}")
+        if r['tags']:
+            print(f"     tags: {r['tags']}")
+        print(f"     source: {r['source']} | {datetime.fromtimestamp(r['created_at'], tz=timezone.utc).strftime('%Y-%m-%d')}")
+
+def artifact_add(path, desc="", tags="", source=""):
+    p = Path(path)
+    if not p.exists():
+        print(f"  ❌ File not found: {path}")
+        return
+    file_hash = hashlib.sha256(p.read_bytes()).hexdigest()[:16]
+    fsize = p.stat().st_size
+    c = conn()
+    try:
+        c.execute(
+            "INSERT OR REPLACE INTO artifacts (path, description, file_hash, source, tags, file_size, session_id) VALUES (?,?,?,?,?,?,?)",
+            (str(p.resolve()), desc, file_hash, source, tags, fsize, os.environ.get("HERMES_SESSION_ID", ""))
+        )
+        c.commit()
+        print(f"  ✅ Artifact registered: {path}")
+    except Exception as e:
+        print(f"  ❌ Error: {e}")
+    finally:
+        c.close()
+
+def artifact_list(tag=None):
+    c = conn()
+    if tag:
+        rows = c.execute("SELECT path, description, tags, created_at FROM artifacts WHERE tags LIKE ? ORDER BY created_at DESC LIMIT 50", (f"%{tag}%",)).fetchall()
+    else:
+        rows = c.execute("SELECT path, description, tags, created_at FROM artifacts ORDER BY created_at DESC LIMIT 50").fetchall()
+    c.close()
+    if not rows:
+        print("  📂 No artifacts registered")
+        return
+    for r in rows:
+        date = datetime.fromtimestamp(r['created_at'], tz=timezone.utc).strftime('%Y-%m-%d')
+        print(f"  📄 {r['path']}")
+        if r['description']:
+            print(f"     {r['description'][:80]}")
+        print(f"     [{date}] tags: {r['tags'] or '-'}")
+
+def decisions_list(topic=None):
+    c = conn()
+    if topic:
+        rows = c.execute("SELECT topic, decision, rationale, created_at FROM decisions WHERE topic LIKE ? ORDER BY created_at DESC LIMIT 20", (f"%{topic}%",)).fetchall()
+    else:
+        rows = c.execute("SELECT topic, decision, rationale, created_at FROM decisions ORDER BY created_at DESC LIMIT 20").fetchall()
+    c.close()
+    if not rows:
+        print("  📋 No decisions recorded")
+        return
+    for r in rows:
+        date = datetime.fromtimestamp(r['created_at'], tz=timezone.utc).strftime('%Y-%m-%d')
+        print(f"  📋 [{date}] {r['topic']}")
+        print(f"     Decision: {r['decision'][:100]}")
+        if r['rationale']:
+            print(f"     Why: {r['rationale'][:100]}")
+
+def exec_query(sql, dbname="agent"):
+    c = conn(dbname)
+    try:
+        cur = c.execute(sql)
+        if sql.strip().upper().startswith("SELECT"):
+            rows = cur.fetchall()
+            if not rows:
+                print("  (empty)")
+            else:
+                # column names
+                cols = [desc[0] for desc in cur.description]
+                print(f"  columns: {', '.join(cols)}")
+                print(f"  rows: {len(rows)}")
+                for r in rows[:30]:
+                    vals = [str(r[col])[:60] for col in cols]
+                    print(f"    {' | '.join(vals)}")
+                if len(rows) > 30:
+                    print(f"  ... and {len(rows)-30} more rows")
+        else:
+            c.commit()
+            print(f"  ✅ {cur.rowcount} rows affected")
+    except Exception as e:
+        print(f"  ❌ {e}")
+    finally:
+        c.close()
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+        print("Usage: sqlite-suitectl <command> [args]")
+        print()
+        print("  init              Initialize agent.db with schema")
+        print("  status            Show DB statistics")
+        print("  cache-stats       Cache hit/expired/active counts")
+        print("  cache-clear       Clear all cache entries")
+        print("  cache-clear --stale  Clear only expired entries")
+        print("  search <q>        Search artifacts by keyword")
+        print("  artifact add <path> [--desc <text>] [--tags <t>] [--source <s>]")
+        print("  artifact list [--tag <t>]")
+        print("  decisions [--topic <t>]")
+        print("  query <sql>       Run raw SQL on agent.db")
+        print("  query <sql> --db <name>  Run on named DB (agent/skill/memory)")
+        sys.exit(0)
+
+    cmd = sys.argv[1]
+    if cmd == "init":
+        init()
+    elif cmd == "status":
+        status()
+    elif cmd == "cache-stats":
+        cache_stats()
+    elif cmd == "cache-clear":
+        cache_clear(stale_only="--stale" in sys.argv)
+    elif cmd == "search":
+        q = " ".join(a for a in sys.argv[2:] if not a.startswith("--"))
+        if not q:
+            print("Usage: sqlite-suitectl search <query>")
+            sys.exit(1)
+        search(q)
+    elif cmd == "artifact":
+        if len(sys.argv) < 4:
+            print("Usage: sqlite-suitectl artifact add <path> [--desc <text>] [--tags <t>] [--source <s>]")
+            print("       sqlite-suitectl artifact list [--tag <t>]")
+            sys.exit(1)
+        sub = sys.argv[2]
+        if sub == "add":
+            path = sys.argv[3]
+            desc = ""
+            tags = ""
+            source = ""
+            args = sys.argv[4:]
+            for i, a in enumerate(args):
+                if a == "--desc" and i+1 < len(args): desc = args[i+1]
+                if a == "--tags" and i+1 < len(args): tags = args[i+1]
+                if a == "--source" and i+1 < len(args): source = args[i+1]
+            artifact_add(path, desc, tags, source)
+        elif sub == "list":
+            tag = ""
+            args = sys.argv[4:]
+            for i, a in enumerate(args):
+                if a == "--tag" and i+1 < len(args): tag = args[i+1]
+            artifact_list(tag)
+        else:
+            print(f"Unknown: {sub}")
+    elif cmd == "decisions":
+        topic = ""
+        args = sys.argv[3:]
+        for i, a in enumerate(args):
+            if a == "--topic" and i+1 < len(args): topic = args[i+1]
+        decisions_list(topic)
+    elif cmd == "query":
+        # find the query string
+        q_parts = []
+        dbname = "agent"
+        skip_next = False
+        for i, a in enumerate(sys.argv[2:]):
+            if skip_next:
+                skip_next = False
+                continue
+            if a == "--db" and i+1 < len(sys.argv[2:]):
+                dbname = sys.argv[2+i+1]
+                skip_next = True
+            else:
+                q_parts.append(a)
+        if not q_parts:
+            print("Usage: sqlite-suitectl query <sql> [--db agent|skill|memory]")
+            sys.exit(1)
+        exec_query(" ".join(q_parts), dbname)
+    else:
+        print(f"Unknown command: {cmd}")
